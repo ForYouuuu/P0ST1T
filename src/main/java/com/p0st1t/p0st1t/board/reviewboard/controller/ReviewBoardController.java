@@ -1,0 +1,162 @@
+package com.p0st1t.p0st1t.board.reviewboard.controller;
+
+
+import com.p0st1t.p0st1t.board.freeboard.service.LikeService;
+import com.p0st1t.p0st1t.board.reviewboard.domain.PageDTO;
+import com.p0st1t.p0st1t.board.reviewboard.domain.ReviewBoardVO;
+import com.p0st1t.p0st1t.board.reviewboard.domain.ReviewCriteria;
+import com.p0st1t.p0st1t.board.reviewboard.service.ReviewBoardService;
+import com.p0st1t.p0st1t.dto.UserCfirm;
+import com.p0st1t.p0st1t.entity.User;
+import com.p0st1t.p0st1t.service.CertificationService;
+import com.p0st1t.p0st1t.service.UserService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Map;
+
+
+@Controller
+@RequiredArgsConstructor
+@Log4j2
+@RequestMapping("/reviewboard/*")
+public class ReviewBoardController {
+
+    private final ReviewBoardService service;
+    private final LikeService service2;
+    private final CertificationService certificationService;
+
+    @GetMapping("/list")
+    public void list(Model model, ReviewCriteria cri) throws Exception {
+        log.info("list. . .");
+        log.info("[" + cri.getType() + "]");
+        model.addAttribute("list", service.getListWithPaging(cri));
+        int total = service.getTotalCount(cri);
+        int reviewboard = cri.getCategoryid();
+        log.info(total);
+        model.addAttribute("pageMaker", new PageDTO(cri, total));
+        model.addAttribute("rb", reviewboard);
+        model.addAttribute("qid", cri.getQid());
+        model.addAttribute("notice", service.notice()); // 공지사항 출력
+    }
+
+
+    @GetMapping("/register")
+    public String register(@AuthenticationPrincipal User user, Model model, RedirectAttributes ras) {
+        model.addAttribute("user", user);
+        //인증받은 자격이 있는지 확인 하고 없을경우 뒤로보내기
+        //있는경우 그 자격에 대해서만 셀렉트박스 옵션주기
+        List<UserCfirm> cfirmList = certificationService.getUserCfirm(user.getUserId());
+        if (cfirmList.isEmpty()) {
+            ras.addFlashAttribute("msg", "인증받은 자격증이 없습니다. 리뷰 작성은 인증 후 가능합니다.");
+            return "redirect:/reviewboard/list";
+        } else {
+            model.addAttribute("cfirmList", cfirmList);
+            return "/reviewboard/register";
+        }
+    }
+
+    @PostMapping("/register")  // 유효성 추가
+    public String afterRegister(@Valid ReviewBoardVO reviewBoardVO, Errors errors, Model model, @AuthenticationPrincipal User user) {
+        if (errors.hasErrors()) {
+
+            model.addAttribute("user", user);
+            model.addAttribute("categoryid", reviewBoardVO.getCategoryid());
+            model.addAttribute("cfirmList", certificationService.getUserCfirm(user.getUserId()));
+            model.addAttribute("boardVO", reviewBoardVO); //실패시 입력 데이터 유지
+            // 유효성 통과 못한 필드와 메시지를 핸들링
+            Map<String, String> validatorResult = service.validateHandling(errors);
+            for (String key : validatorResult.keySet()) {
+                model.addAttribute(key, validatorResult.get(key));
+            }
+            return "/reviewboard/register";
+        }     //Errors 객체 VO에 binding된 필드의 유효성 검사오류에 대한 정보를  errors.hasErrors 저장하고 노출
+        reviewBoardVO.setWriterid(user.getUserId());
+        service.register(reviewBoardVO);
+        return "redirect:/reviewboard/list";
+    }
+
+
+    @GetMapping({"/get", "/modify"})
+    public void get(@RequestParam("bno") Long bno, Model model, @ModelAttribute("cri") ReviewCriteria cri, @AuthenticationPrincipal User user) throws Exception {
+        log.info("/get || /modify. ..");
+
+        model.addAttribute("vo", service.get(bno));
+        model.addAttribute("user", user);
+        model.addAttribute("list", service.getListWithPaging(cri));
+        if (user != null) {
+            int isLIke = service2.alreadyLike(bno, Long.toString(user.getUserId()));
+            if (isLIke > 0) {
+                model.addAttribute("isLiked", true);
+            }
+        }
+        int total = service.getTotalCount(cri);
+        service.viewCount(bno);
+        model.addAttribute("pageMaker", new PageDTO(cri, total));
+        //PageDTO(cri, total));
+
+    }
+
+    @PostMapping("/modify")
+    public String modify(@Valid ReviewBoardVO bVo, Errors errors, RedirectAttributes ras, @ModelAttribute("cri") ReviewCriteria cri, Model model, @AuthenticationPrincipal User user) {
+        log.info("modify..." + bVo);
+        int cnt = 0;
+        if (bVo.getWriterid() == user.getUserId()) {
+            cnt = service.modify(bVo);
+        }
+
+        if (errors.hasErrors()) {
+            model.addAttribute("vo", bVo);
+
+            // 유효성 통과 못한 필드와 메시지를 핸들링
+            Map<String, String> validatorResult = service.validateHandling(errors);
+            for (String key : validatorResult.keySet()) {
+                model.addAttribute(key, validatorResult.get(key));
+            }
+            return "/reviewboard/modify";
+        }
+        if (cnt == 1) {
+            ras.addFlashAttribute("result", "수정 성공");
+        }
+        return "redirect:/reviewboard/list" + cri.getListLink();
+    }
+
+    @PostMapping("/remove")
+    public String remove(@RequestParam("bno") Long bno, RedirectAttributes ras, @ModelAttribute("cri") ReviewCriteria cri, @AuthenticationPrincipal User user) {
+        log.info("remove...");
+        boolean result = false;
+        if (service.get(bno).getWriterid() == user.getUserId()) {
+            result = service.delete(bno);
+        }
+        if (result) {
+            ras.addFlashAttribute("result", "삭제 성공");
+        }
+        return "redirect:/reviewboard/list" + cri.getListLink();
+    }
+
+    @ResponseBody
+    @RequestMapping(value = "/get", method = RequestMethod.POST)
+    public int updateLike(Long bno, String id) throws Exception {
+
+        int likeCheck = service2.alreadyLike(bno, id);
+        if (likeCheck == 0) {
+            //좋아요 처음누름
+            service2.insertLike(bno, id); //like테이블 삽입
+            service2.plusLike(bno);
+        } else if (likeCheck == 1) {
+            service2.deleteLike(bno, id); //like테이블 삭제
+            service2.minusLike(bno);
+        }
+        return likeCheck;
+    }
+
+
+}

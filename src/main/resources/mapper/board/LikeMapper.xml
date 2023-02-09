@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.p0st1t.p0st1t.board.freeboard.mapper.LikeMapper">
+    <insert id="insertLike">
+        insert into likeboard(bno,user_id)
+        values( #{bno},#{id})
+    </insert>
+
+    <delete id="deleteLike">
+        delete from likeboard
+        where bno= #{bno} and user_id=#{id}
+    </delete>
+
+    <select id="alreadyLike" resultType="int">
+        select count(*) from likeboard where bno=#{bno} and user_id =#{id}
+    </select>
+
+
+    <!-- 게시글 추천수 -->
+    <update id="likePlus" parameterType="Long">
+        update boardtbl set
+        LIKEHIT = LIKEHIT+1
+        where BNO = #{bno}
+    </update>
+
+    <!-- 게시글 추천수취소 -->
+    <update id="likeMinus" parameterType="Long">
+        update boardtbl set
+        LIKEHIT = LIKEHIT - 1
+        where BNO = #{bno}
+    </update>
+</mapper>

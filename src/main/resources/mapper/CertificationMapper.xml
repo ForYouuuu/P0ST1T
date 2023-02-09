@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.p0st1t.p0st1t.mapper.CertificationMapper">
+
+    <select id="getList" resultType="com.p0st1t.p0st1t.dto.CertificationVO">
+        select id, qname, grade, area, organizer from certification
+    </select>
+
+    <select id="getSearchList" resultType="com.p0st1t.p0st1t.dto.CertificationVO">
+        select id, qname, grade, area, organizer from certification where qname like concat('%', #{search}, '%')
+    </select>
+
+    <select id="getTagList" resultType="com.p0st1t.p0st1t.dto.CertificationVO">
+        select id, qname, grade, area, organizer from certification
+        <trim prefixOverrides="and" prefix="where">
+        <if test="areaList.length != 0">
+            and area in
+        <foreach collection="areaList" item="area" open="(" close=")" separator=",">
+            #{area}
+        </foreach>
+        </if>
+
+        <if test="gradeList.length != 0">
+        and grade in
+        <foreach collection="gradeList" item="grade" open="(" close=")" separator=",">
+            #{grade}
+        </foreach>
+        </if>
+        </trim>
+    </select>
+
+    <select id="getCertById" resultType="com.p0st1t.p0st1t.dto.CertificationVO">
+        select * from certification where id = #{id}
+    </select>
+
+    <select id="getCertEligibility" resultType="com.p0st1t.p0st1t.dto.CertEligibilityVO">
+        select eligibility from eligibility where grade = #{grade}
+    </select>
+
+    <select id="getCertSchedule" resultType="com.p0st1t.p0st1t.dto.CertScheduleVO">
+        select * from schedule where grade = #{grade}
+    </select>
+
+    <select id="getPilgiSubject" resultType="com.p0st1t.p0st1t.dto.PilgiSubjectVO">
+        select pilgisubject from pilgisubject where qname = #{qname}
+    </select>
+
+    <select id="getSilgiSubject" resultType="com.p0st1t.p0st1t.dto.SilgiSubjectVO">
+        select silgisubject, silgiform, silgitime from silgisubject where id = #{id}
+    </select>
+
+    <select id="findQid" resultType="String">
+        select id from certification where qname = #{qname}
+    </select>
+
+    <insert id="saveCfirm">
+        insert into t_usercfirm select #{userId}, #{qid} from dual where not exists(select * from t_usercfirm where user_id = #{userId} and user_cfirm = #{qid})
+    </insert>
+
+    <select id="getUserCfirm" resultType="com.p0st1t.p0st1t.dto.UserCfirm">
+        select user_cfirm from t_usercfirm where user_id = #{userId}
+    </select>
+
+    <insert id="signout" >
+        insert into t_out(user_id, email, name) select user_id, email, name from t_user where user_id = #{userId};
+    </insert>
+
+    <delete id="signout2">
+        delete from t_user where user_id = #{userId}
+    </delete>
+</mapper>

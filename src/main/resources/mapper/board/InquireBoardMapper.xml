@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.p0st1t.p0st1t.board.inquireboard.mapper.InquireBoardMapper">
+
+    <select id="getList"  resultType="com.p0st1t.p0st1t.board.inquireboard.domain.InquireBoardVO">
+        select * from boardTBL where bno > 0 and boardid = 5
+    </select>
+
+    <insert id="register">
+        insert into boardTBL(bno,title,content,writer, secret)
+                    values(#{title}, #{content} , #{writer}, #{secret})
+    </insert>
+
+    <insert id="insertSelectKey">
+        <selectKey keyProperty="bno" order="BEFORE" resultType="long">
+            select MAX(bno) + 1 from boardTBL
+        </selectKey>
+
+        insert into boardTBL (boardname,boardid, bno, title, content, writerid, writer,secret)
+        values('문의하기','5',#{bno}, #{title}, #{content}, #{writerid}, #{writer}, #{secret})
+    </insert>
+
+    <select id="read" resultType="com.p0st1t.p0st1t.board.inquireboard.domain.InquireBoardVO">
+        select * from boardTBL where bno = #{bno}
+    </select>
+
+    <delete id="getDelete">
+        delete from boardTBL where bno = #{bno}
+    </delete>
+
+    <update id="update">
+        update boardTBL set title =#{title},
+        content =#{content}, writer =#{writer},
+        updatedate = sysdate() where bno = #{bno}
+    </update>
+
+    <!--my sql  검색 조건문 -->
+    <sql id="criteria">
+        <trim prefix="and (" suffix=")" prefixOverrides="OR">
+            <foreach collection="typeArr" item="type">
+                <trim prefix="OR">
+                    <choose>
+                        <when test="type == 'T'.toString()">
+                            title like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'C'.toString()">
+                            content like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'W'.toString()">
+                            writer like concat('%',#{keyword},'%' )
+                        </when>
+                    </choose>
+                </trim>
+            </foreach>
+        </trim>
+
+    </sql>
+
+
+
+    <select id="getListWithPaging" resultType="com.p0st1t.p0st1t.board.inquireboard.domain.InquireBoardVO">
+        select * from(
+         select *
+        from boardTBL where boardid = 5
+        <if test="keyword != null">
+            <include refid="criteria"></include>
+        </if>
+        ) as T1 <include refid="sort"></include>
+        limit #{skip},#{amount}
+    </select>
+
+    <!-- mysql용-->
+    <select id="getTotalCount" resultType="int">
+        select count(*) from boardTBL where boardid = 5
+        <if test="keyword != null">
+            <include refid="criteria"></include>
+        </if>
+    </select>
+
+    <update id="BoardViewCount">
+        update boardtbl
+        set viewcount = viewcount +1
+        where bno = #{bno}
+    </update>
+
+    <update id="updateReplyCnt">
+        update boardtbl set replycnt = replycnt + #{amount} where bno = #{bno}
+    </update>
+
+
+    <select id="notice" resultType="com.p0st1t.p0st1t.board.inquireboard.domain.InquireBoardVO" >
+        select * from boardTBL where boardid=1  and categoryid=5 order by bno desc limit 3;
+    </select>
+
+
+    <sql id="sort">
+        <if test="sort == ''">
+            ORDER BY bno DESC
+        </if>
+        <if test="sort == 'bno'">
+            ORDER BY bno DESC
+        </if>
+
+        <if test="sort == 'viewcount'">
+            ORDER BY viewcount DESC
+        </if>
+
+        <if test="sort == 'replycnt'">
+            ORDER BY replycnt DESC
+        </if>
+
+        <if test="sort == 'likehit'">
+            ORDER BY likehit DESC
+        </if>
+    </sql>
+
+
+
+</mapper>

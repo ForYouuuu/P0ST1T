@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.p0st1t.p0st1t.board.admin.mapper.AdminMapper">
+
+
+    <select id="getList"  resultType="com.p0st1t.p0st1t.board.admin.domain.AdminVO">
+        select * from boardTBL where boardid=2 order by bno desc limit 7;
+    </select>
+
+    <select id="read" resultType="com.p0st1t.p0st1t.board.admin.domain.AdminVO">
+        select * from boardTBL where bno = #{bno}
+    </select>
+
+    <delete id="delete">
+        delete from boardTBL where bno = #{bno}
+    </delete>
+
+    <!--my sql  검색 조건문 -->
+    <sql id="criteria">
+        <trim prefix="and (" suffix=")" prefixOverrides="OR">
+            <foreach collection="typeArr" item="type">
+                <trim prefix="OR">
+                    <choose>
+                        <when test="type == 'N'.toString()">
+                            bno like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'T'.toString()">
+                            title like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'C'.toString()">
+                            content like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'W'.toString()">
+                            writer like concat('%',#{keyword},'%' )
+                        </when>
+                    </choose>
+                </trim>
+            </foreach>
+        </trim>
+    </sql>
+
+
+    <sql id="userCriteria">
+        <trim prefix="where (" suffix=")" prefixOverrides="OR">
+            <foreach collection="typeArr" item="type">
+                <trim prefix="OR">
+                    <choose>
+                        <when test="type == 'I'.toString()">
+                            user_id like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'E'.toString()">
+                            email like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'N'.toString()">
+                            name like concat('%',#{keyword},'%')
+                        </when>
+                        <when test="type == 'K'.toString()">
+                            nickname like concat('%',#{keyword},'%' )
+                        </when>
+                    </choose>
+                </trim>
+            </foreach>
+        </trim>
+    </sql>
+
+
+
+
+
+    <select id="getListWithPaging" resultType="com.p0st1t.p0st1t.board.admin.domain.AdminVO">
+        select * from(
+            select *
+        from boardTBL where boardid=#{boardid}
+        <if test="keyword != null">
+            <include refid="criteria"></include>
+        </if>
+        <if test="categoryid != 0"> and categoryid=#{categoryid}</if>
+            <include refid="sort"></include>) as T1
+        where boardid=#{boardid} limit #{skip},#{amount}
+    </select>
+
+    <!-- mysql용-->
+    <select id="getTotalCount" resultType="int">
+        select count(*) from boardTBL
+        where boardid=#{boardid}
+        <if test="keyword != null">
+            <include refid="criteria"></include>
+        </if>
+    </select>
+
+    <select id="getUserCount" resultType="int">
+        select count(*) from t_user
+        <if test="keyword != null">
+            <include refid="userCriteria"></include>
+        </if>
+    </select>
+
+
+    <update id="BoardViewCount">
+        update boardtbl
+        set viewcount = viewcount +1
+        where bno = #{bno}
+    </update>
+
+    <update id="updateReplyCnt">
+        update boardtbl set replycnt = replycnt + #{amount} where bno = #{bno}
+    </update>
+
+
+    <select id="count" resultType="com.p0st1t.p0st1t.board.admin.domain.AdminVO" >
+    select count(*) from boardTBL where replycnt;
+    </select>
+
+    <sql id="sort">
+        <if test="sort == ''">
+            ORDER BY bno DESC
+        </if>
+        <if test="sort == 'bno'">
+            ORDER BY bno DESC
+        </if>
+
+        <if test="sort == 'viewcount'">
+            ORDER BY viewcount DESC
+        </if>
+
+        <if test="sort == 'replycnt'">
+            ORDER BY replycnt DESC
+        </if>
+
+        <if test="sort == 'likehit'">
+            ORDER BY likehit DESC
+        </if>
+    </sql>
+
+    <select id="isMember" resultType="com.p0st1t.p0st1t.board.admin.domain.AdminVO">
+        select * from(
+            select *
+        from t_user
+        <if test="keyword != null">
+            <include refid="userCriteria"></include>
+        </if>) as T1
+         limit #{skip},#{amount}
+    </select>
+
+
+
+
+
+    <delete id="userDelete">
+        delete from t_user
+        where user_id=#{user_id}
+    </delete>
+
+
+
+
+</mapper>

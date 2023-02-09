@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.p0st1t.p0st1t.board.myBoard.mapper.MyBoardMapper">
+
+    <select id="getList" resultType="com.p0st1t.p0st1t.board.myBoard.domain.MyBoardVO">
+        select * from boardTBL where writerid = #{userId}
+    </select>
+
+    <select id="getListWithPaging" resultType="com.p0st1t.p0st1t.board.myBoard.domain.MyBoardVO">
+        select * from(select * from boardTBL where writerid = #{userId} order by bno desc) as mb
+        limit #{cri.skip},#{cri.amount}
+    </select>
+
+    <select id="getTotalCount" resultType="int">
+        select count(*) from boardTBL where writerid = #{userId}
+    </select>
+
+    <select id="getTotalRepCount" resultType="int">
+        select count(*) from t_reply where replyerid = #{userId}
+    </select>
+
+    <select id="getRepListWithPaging" resultType="com.p0st1t.p0st1t.board.myBoard.domain.MyReplyVO">
+        select rno, rb1.bno, reply, replydate, boardname, boardid, title, qname from (select rno, bno, reply, replydate from t_reply where replyerid = #{userId}) as rb1
+        left outer join boardtbl
+        on rb1.bno = boardtbl.bno
+        limit #{cri.skip},#{cri.amount}
+    </select>
+
+    <select id="getBoardCnt" resultType="int">
+        select count(*) from boardTBL where boardid = 4
+    </select>
+
+    <select id="getUserCnt" resultType="int">
+        select count(*) from t_user where auth = 1
+    </select>
+</mapper>
